@@ -1,20 +1,17 @@
 from kivy.lang import Builder
 from kivy.properties import StringProperty
-from kivy.uix.screenmanager import Screen
-from kivymd.icon_definitions import md_icons
+from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
+
+import sqlite3
 from kivymd.app import MDApp
 from kivymd.uix.list import OneLineIconListItem
-
-from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
-from kivy.properties import ObjectProperty
-from functools import partial
 
 Builder.load_string(
     '''
 #:import images_path kivymd.images_path
 <CustomOneLineIconListItem>
     on_press:
-        app.get_running_app().root.ids.screen_one.changeScreen()
+        app.get_running_app().root.ids.screen_one.change_screen()
         app.get_running_app().root.ids.screen_one.clear_list()
     IconLeftWidget:
         icon: root.icon
@@ -55,7 +52,7 @@ Builder.load_string(
             text: "health points: "
         Button:
             text:"go screen 1"
-            on_press:root.changeScreen()
+            on_press:root.change_screen()
 <Manager>:
     id: screen_manager
     screen_one: screen_one
@@ -72,110 +69,180 @@ Builder.load_string(
 )
 
 
+class MySQlite:
+    conn = None
+
+    def create_connection(self, db_file):
+
+        """ create a database connection to a SQLite database """
+
+        try:
+            self.conn = sqlite3.connect(db_file)
+            return True
+        except sqlite3.Error as e:
+            print(e)
+        return False
+
+    def query(self, query, params="", return_rows=False):
+
+        """Funcion que ejecuta la query
+           query      = cadena sql
+           params     = una tupla con los valores si son necesarios
+           returnRows = determina si devuelve el resultado """
+
+        if not self.conn:
+            return False
+
+        try:
+
+            c = self.conn.cursor()
+
+            c.execute(query, params) if params else c.execute(query)
+
+            if return_rows:
+                # devolvemos los registros devueltos por la consulta
+                return c.fetchall()
+            self.conn.commit()
+            # devolvemos los registros afectados
+            return c.rowcount
+        except sqlite3.Error as e:
+            print(e)
+        return False
+
+    def create_table(self, query):
+
+        return self.query(query)
+
+    def insert_row(self, query, params):
+
+        return self.query(query, params)
+
+    def update_row(self, query, params):
+
+        return self.query(query, params)
+
+    def delete_row(self, query, params):
+
+        return self.query(query, params)
+
+    def get_rows(self, query, params=""):
+
+        return self.query(query, params, True)
+
+
 class CustomOneLineIconListItem(OneLineIconListItem):
     icon = StringProperty()
 
 
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
-from kivy.properties import ObjectProperty, NumericProperty
-
-import sqlite3
-
-conexion = sqlite3.connect("bd1.db")
-try:
-    conexion.execute("""create table articulos (
-                              codigo integer primary key autoincrement,
-                              descripcion text,
-                              precio real
-                        )""")
-    print("se creo la tabla articulos")
-except sqlite3.OperationalError:
-    print("La tabla articulos ya existe")
-
-"""conexion.execute("insert into articulos(descripcion,precio) values (?,?)", ("naranjas", 23.50))
-conexion.execute("insert into articulos(descripcion,precio) values (?,?)", ("peras", 34))
-conexion.execute("insert into articulos(descripcion,precio) values (?,?)", ("bananas", 25))
-conexion.commit()
-conexion.close()"""
-
-
 class ScreenTwo(Screen):
-    health_points = NumericProperty(100)
 
     def __init__(self, **kwargs):
         super(ScreenTwo, self).__init__(**kwargs)
 
-    def changeScreen(self):
+    def change_screen(self):
         self.manager.current = 'screen1'
 
 
 class Manager(ScreenManager):
-    screen_one = ObjectProperty(None)
-    screen_two = ObjectProperty(None)
+    pass
 
 
 class PreviousMDIcons(Screen):
-    myList = []
-    c=[]
+    c = []
+
     def on_enter(self, *args):
-        print(self.c)
-        self.c=[]
-        self.c = self.articulos()
-        print(self.c)
-    def changeScreen(self):
+        self.c = []
+        if len(self.c) == 0:
+            self.c = self.get_articulos()
+
+    def change_screen(self):
         self.manager.current = 'screen2'
 
     def set_list_md_icons(self, text="", search=False):
-        '''Builds a list of icons for the screen MDIcons.'''
-
-        def add_icon_item(name_icon):
+        """Builds a list of icons for the screen MDIcons."""
+        print(self.c)
+        def add_icon_item(name):
             self.ids.rv.data.append(
                 {
                     "viewclass": "CustomOneLineIconListItem",
                     "icon": "android",
-                    "text": name_icon,
+                    "text": name,
                     "callback": lambda x: x,
 
                 }
             )
 
-
-
+        if len(self.c) == 0:
+            self.ids.search_field.text = ""
+            self.ids.container.clear_widgets()
+            self.ids.rv.data = []
+            self.c = self.get_articulos()
         for name_icon in self.c:
 
-            if search :
-                if text in name_icon:
+           if search and len(self.c)!=0:
+              if text in name_icon:
                     add_icon_item(name_icon)
-            else:
-
-               self.c.clear()
+           else:
+              self.c.clear()
         self.c.clear()
-        print(self.c)
+
     def clear_list(self):
-        self.ids.search_field.text=""
+        self.ids.search_field.text = ""
         self.ids.container.clear_widgets()
-        self.ids.rv.data=[]
+        self.ids.rv.data = []
         self.c.clear()
 
-    def articulos(self):
-        conexion = sqlite3.connect("bd1.db")
-        cursor = conexion.execute("select * from articulos ")
-        filas = cursor.fetchall()
-        if len(filas) > 0:
+    @staticmethod
+    def get_articulos():
+        lista = []
+        mysqlite = MySQlite()
+        mysqlite.create_connection("data.db")
+        query = "select * from usuarios"
+        filas = mysqlite.get_rows(query)
+        if filas:
             for fila in filas:
-                self.myList.append(fila[1])
+                lista.append(fila[1])
         else:
-            print("No existen artículos con un precio menor al ingresado.")
-        conexion.close()
+            print("No existen usuarios para mostrar.")
 
-        return self.myList
+        return lista
 
 
 class MainApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.screen = PreviousMDIcons()
+        self.init_conn()
+
+    @staticmethod
+    def init_conn():
+        mysqlite = MySQlite()
+
+        # conectamos con la base de datos
+
+        if mysqlite.create_connection("data.db"):
+            print("conectado con la base de datos")
+        else:
+            print("No se ha podido crear o conectar con la base de datos")
+
+        # creamos la tabla si no existe
+
+        if mysqlite.create_table("""CREATE TABLE IF NOT EXISTS usuarios (
+                              codigo integer primary key,
+                              name text );"""):
+            print("Creada la tabla")
+
+        else:
+            print("No se ha podido crear la tabla")
+
+        """"# insertamos un registro
+        query="INSERT INTO usuarios (codigo,name) VALUES (?,?);"
+        params=(3,"Maria")
+        result=mysqlite.insert_row(query, params)
+        if result:
+             print(f"Insertado {result} registro")
+        else:
+             print("No se ha podido añadir un registro")"""
 
     def build(self):
         m = Manager(transition=NoTransition())
