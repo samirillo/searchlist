@@ -174,8 +174,8 @@ class PreviousMDIcons(Screen):
 
         if len(self.c) == 0:
             self.ids.search_field.text = ""
-            self.ids.container.clear_widgets()
             self.ids.rv.data = []
+            self.ids.rv.refresh_from_data()
             self.c = self.get_articulos()
         for name_icon in self.c:
 
@@ -188,8 +188,8 @@ class PreviousMDIcons(Screen):
 
     def clear_list(self):
         self.ids.search_field.text = ""
-        self.ids.container.clear_widgets()
         self.ids.rv.data = []
+        self.ids.rv.refresh_from_data()
         self.c.clear()
 
     @staticmethod
