@@ -148,19 +148,13 @@ class Manager(ScreenManager):
 
 
 class PreviousMDIcons(Screen):
-    c = []
-
-    def on_enter(self, *args):
-        self.c = []
-        if len(self.c) == 0:
-            self.c = self.get_articulos()
 
     def change_screen(self):
         self.manager.current = 'screen2'
 
     def set_list_md_icons(self, text="", search=False):
         """Builds a list of icons for the screen MDIcons."""
-        print(self.c)
+
         def add_icon_item(name):
             self.ids.rv.data.append(
                 {
@@ -172,25 +166,22 @@ class PreviousMDIcons(Screen):
                 }
             )
 
-        if len(self.c) == 0:
+        if len(self.get_articulos()) != 0:
             self.ids.search_field.text = ""
             self.ids.rv.data = []
             self.ids.rv.refresh_from_data()
-            self.c = self.get_articulos()
-        for name_icon in self.c:
+        for name_icon in self.get_articulos():
 
-           if search and len(self.c)!=0:
+           if search and len(self.get_articulos())!=0:
               if text in name_icon:
                     add_icon_item(name_icon)
-           else:
-              self.c.clear()
-        self.c.clear()
+
+
 
     def clear_list(self):
         self.ids.search_field.text = ""
         self.ids.rv.data = []
         self.ids.rv.refresh_from_data()
-        self.c.clear()
 
     @staticmethod
     def get_articulos():
